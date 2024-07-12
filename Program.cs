@@ -1,6 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace UnluacExecutor
 {
@@ -83,8 +81,6 @@ namespace UnluacExecutor
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8,
                 WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
             };
 
@@ -93,20 +89,23 @@ namespace UnluacExecutor
                 process.StartInfo = processStartInfo;
                 process.Start();
 
-                string output = process.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
+                using (FileStream fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write))
+                {
+                    using (Stream s = process.StandardOutput.BaseStream)
+                    {
+                        s.CopyTo(fs);
+                    }
+                    process.WaitForExit();
+                }
 
                 if (process.ExitCode != 0)
                 {
                     Console.WriteLine("Standard Output:");
-                    Console.WriteLine(output);
+                    Console.WriteLine(process.StandardOutput.ReadToEnd());
                     Console.WriteLine("Standard Error:");
-                    Console.WriteLine(error);
+                    Console.WriteLine(process.StandardError.ReadToEnd());
                     throw new Exception($"unluac.jar 执行失败，返回值 {process.ExitCode}。");
                 }
-
-                File.WriteAllText(outputPath, output, Encoding.UTF8);
             }
         }
     }
